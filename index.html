@@ -627,15 +627,23 @@
             margin-top: 40px;
         }
         .footer a {
-            color: white;
+            color: rgba(255,255,255,0.9);
             text-decoration: none;
             font-size: 14px;
-            opacity: 0.8;
             transition: opacity 0.2s;
         }
         .footer a:hover {
-            opacity: 1;
+            opacity: 0.8;
             text-decoration: underline;
+        }
+        .footer p {
+            color: rgba(255,255,255,0.7);
+        }
+        body.dark-mode .footer a {
+            color: rgba(160,180,244,0.9);
+        }
+        body.dark-mode .footer p {
+            color: rgba(160,180,244,0.6);
         }
         .pagination {
             display: flex;
