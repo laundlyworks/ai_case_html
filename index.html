@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI活用100本ノック 検索</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Hiragino Sans', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding-top: 70px;
+        }
+        body.dark-mode {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        }
+        /* 共通ヘッダー */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+        }
+        body.dark-mode .header {
+            background: rgba(30,30,50,0.95);
+        }
+        .header-title {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #667eea;
+            text-decoration: none;
+        }
+        body.dark-mode .header-title {
+            color: #a0b4f4;
+        }
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .header-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 22px;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.2s;
+            color: #555;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        body.dark-mode .header-btn {
+            color: #ccc;
+        }
+        .header-btn:hover {
+            background: rgba(102,126,234,0.1);
+            color: #667eea;
+        }
+        body.dark-mode .header-btn:hover {
+            background: rgba(160,180,244,0.2);
+            color: #a0b4f4;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .search-box {
+            position: sticky;
+            top: 70px;
+            z-index: 100;
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+        body.dark-mode .search-box {
+            background: #2a2a4a;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+        }
+        .search-input {
+            width: 100%;
+            padding: 16px 20px;
+            font-size: 18px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            outline: none;
+            transition: border-color 0.3s, background 0.3s, color 0.3s;
+            background: white;
+            color: #333;
+        }
+        body.dark-mode .search-input {
+            background: #1a1a2e;
+            border-color: #444;
+            color: #eee;
+        }
+        .search-input:focus {
+            border-color: #667eea;
+        }
+        .search-input::placeholder {
+            color: #aaa;
+        }
+        body.dark-mode .search-input::placeholder {
+            color: #777;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            color: #666;
+            font-size: 14px;
+        }
+        body.dark-mode .stats {
+            color: #aaa;
+        }
+        .filter-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .tag-description {
+            margin-top: 12px;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, rgba(102,126,234,0.1) 0%, rgba(118,75,162,0.1) 100%);
+            border-radius: 8px;
+            border-left: 3px solid #667eea;
+            font-size: 14px;
+            color: #444;
+            line-height: 1.6;
+        }
+        .tag-description .tag-name {
+            font-weight: bold;
+            color: #667eea;
+            margin-right: 8px;
+        }
+        body.dark-mode .tag-description {
+            background: linear-gradient(135deg, rgba(102,126,234,0.2) 0%, rgba(118,75,162,0.2) 100%);
+            color: #ccc;
+        }
+        body.dark-mode .tag-description .tag-name {
+            color: #a0b4f4;
+        }
+        .tag-description .no-description {
+            color: #888;
+            font-style: italic;
+        }
+        body.dark-mode .tag-description .no-description {
+            color: #777;
+        }
+        .search-container {
+            position: relative;
+        }
+        .autocomplete-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 200;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: none;
+        }
+        body.dark-mode .autocomplete-list {
+            background: #2a2a4a;
+            border-color: #444;
+        }
+        .autocomplete-list.active {
+            display: block;
+        }
+        .autocomplete-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        body.dark-mode .autocomplete-item {
+            border-bottom-color: #444;
+            color: #ddd;
+        }
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+        .autocomplete-item:hover, .autocomplete-item.selected {
+            background: #f5f5ff;
+        }
+        body.dark-mode .autocomplete-item:hover,
+        body.dark-mode .autocomplete-item.selected {
+            background: #3a3a5a;
+        }
+        .autocomplete-item .tag {
+            color: #667eea;
+            font-weight: 500;
+        }
+        body.dark-mode .autocomplete-item .tag {
+            color: #a0b4f4;
+        }
+        .filter-tag {
+            padding: 6px 12px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            color: #333;
+        }
+        body.dark-mode .filter-tag {
+            background: #3a3a5a;
+            color: #ccc;
+        }
+        .filter-tag:hover {
+            background: #667eea;
+            color: white;
+        }
+        .filter-tag.active {
+            background: #667eea;
+            color: white;
+        }
+        .view-toggle {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .view-btn {
+            padding: 8px 12px;
+            background: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        body.dark-mode .view-btn {
+            background: #2a2a4a;
+            color: #ccc;
+        }
+        .view-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+        .view-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        body.dark-mode .view-btn.active {
+            background: linear-gradient(135deg, #7b8eef 0%, #8a5cb5 100%);
+            color: white;
+            box-shadow: 0 0 8px rgba(123, 142, 239, 0.5);
+        }
+        body.dark-mode .view-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+        .cards.grid-view {
+            grid-template-columns: repeat(3, 1fr);
+        }
+        .cards.list-view {
+            grid-template-columns: 1fr;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+        body.dark-mode .card {
+            background: #2a2a4a;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+        }
+        body.dark-mode .card:hover {
+            box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+        }
+        .grid-view .card-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .grid-view .card-number {
+            margin-bottom: 0;
+            flex-shrink: 0;
+        }
+        .grid-view .card-title {
+            font-size: 14px;
+            margin-bottom: 0;
+            line-height: 1.4;
+        }
+        .grid-view .card-solution {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        body.dark-mode .grid-view .card-solution {
+            color: #aaa;
+        }
+        body.dark-mode .grid-view .card-title {
+            color: #eee;
+        }
+        .list-view .card {
+            padding: 14px 18px;
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+        }
+        .list-view .card:hover {
+            transform: translateY(-2px);
+        }
+        .list-view .card-number {
+            margin-bottom: 0;
+            flex-shrink: 0;
+        }
+        .list-view .card-body {
+            flex: 1;
+            min-width: 0;
+        }
+        .list-view .card-title {
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+        .list-view .card-solution {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        body.dark-mode .list-view .card-solution {
+            color: #aaa;
+        }
+        body.dark-mode .list-view .card-title {
+            color: #eee;
+        }
+        /* 詳細ページ */
+        .detail-page {
+            display: none;
+            position: fixed;
+            top: 60px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 500;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        body.dark-mode .detail-page {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        }
+        .detail-page.active {
+            display: block;
+        }
+        .detail-container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .detail-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-bottom: 20px;
+            transition: background 0.2s;
+        }
+        .detail-back:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .detail-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        body.dark-mode .detail-card {
+            background: #2a2a4a;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+        }
+        .detail-number {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 16px;
+        }
+        .detail-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 30px;
+            line-height: 1.4;
+        }
+        body.dark-mode .detail-title {
+            color: #eee;
+        }
+        .detail-section {
+            margin-bottom: 24px;
+        }
+        .detail-label {
+            font-size: 16px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        body.dark-mode .detail-label {
+            color: #a0b4f4;
+        }
+        .detail-text {
+            font-size: 16px;
+            color: #444;
+            line-height: 1.8;
+            background: #f8f9fa;
+            padding: 16px 20px;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+        body.dark-mode .detail-text {
+            background: #1a1a2e;
+            color: #ccc;
+        }
+        .detail-subtitle {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        body.dark-mode .detail-subtitle {
+            color: #aaa;
+        }
+        .detail-image {
+            margin-bottom: 24px;
+        }
+        .detail-image img {
+            width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+        .detail-text.secondary {
+            margin-top: 8px;
+            background: #f0f4ff;
+            border-left-color: #a0b4f4;
+        }
+        .detail-text.voice {
+            background: #fff9e6;
+            border-left-color: #ffc107;
+            font-style: italic;
+        }
+        .detail-process {
+            font-size: 15px;
+            color: #444;
+            line-height: 1.8;
+            background: #f8f9fa;
+            padding: 20px 24px;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+        body.dark-mode .detail-process {
+            background: #1a1a2e;
+            color: #ccc;
+        }
+        .process-step {
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        body.dark-mode .process-step {
+            border-bottom-color: #444;
+        }
+        .process-step:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+        .process-step strong {
+            color: #667eea;
+            font-size: 16px;
+        }
+        body.dark-mode .process-step strong {
+            color: #a0b4f4;
+        }
+        .process-prompt {
+            margin-top: 10px;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
+            border-radius: 8px;
+            border-left: 3px solid #4caf50;
+            font-size: 14px;
+            color: #2e7d32;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        body.dark-mode .process-prompt {
+            background: linear-gradient(135deg, #1b3a1b 0%, #1a2e1a 100%);
+            color: #81c784;
+        }
+        .process-prompt-label {
+            display: block;
+            font-size: 12px;
+            font-weight: bold;
+            color: #388e3c;
+            margin-bottom: 6px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Hiragino Sans', sans-serif;
+        }
+        body.dark-mode .process-prompt-label {
+            color: #66bb6a;
+        }
+        .detail-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 20px;
+        }
+        .detail-tag {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .card-number {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+        .card-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 16px;
+            line-height: 1.4;
+        }
+        .card-section {
+            margin-bottom: 12px;
+        }
+        .card-label {
+            font-size: 12px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 4px;
+        }
+        .card-text {
+            font-size: 14px;
+            color: #555;
+            line-height: 1.6;
+        }
+        .highlight {
+            background: #fff59d;
+            padding: 0 2px;
+            border-radius: 2px;
+        }
+        .no-results {
+            text-align: center;
+            color: white;
+            padding: 60px 20px;
+            font-size: 18px;
+        }
+        .loading {
+            text-align: center;
+            color: white;
+            padding: 60px 20px;
+            font-size: 18px;
+        }
+        .footer {
+            text-align: center;
+            padding: 24px 20px;
+            margin-top: 40px;
+        }
+        .footer a {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+        .footer a:hover {
+            opacity: 1;
+            text-decoration: underline;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+        .pagination button {
+            padding: 10px 16px;
+            background: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            color: #333;
+        }
+        body.dark-mode .pagination button {
+            background: #2a2a4a;
+            color: #ccc;
+        }
+        .pagination button:hover:not(:disabled) {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .pagination button.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .pagination .page-info {
+            color: white;
+            font-size: 14px;
+            margin: 0 10px;
+        }
+        @media (max-width: 1024px) {
+            .cards.grid-view {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 768px) {
+            .cards, .cards.grid-view {
+                grid-template-columns: 1fr;
+            }
+            .header-title {
+                font-size: 1rem;
+            }
+            .detail-card {
+                padding: 24px;
+            }
+            .detail-title {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 共通ヘッダー -->
+    <header class="header">
+        <a href="#" class="header-title" id="headerTitle">AI活用100本ノック</a>
+        <div class="header-actions">
+            <button class="header-btn" id="darkModeToggle" title="ダーク/ライトモード切替">
+                <span id="darkModeIcon">🌙</span>
+            </button>
+            <a href="https://fullswing.dena.com/pdf/AI_100tips_slide.pdf" class="header-btn" target="_blank" rel="noopener noreferrer" title="PDFを開く">
+                📄
+            </a>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="search-box">
+            <div class="search-container">
+                <input type="text" class="search-input" id="searchInput" placeholder="キーワードで検索... (例: Gemini, 議事録, 自動化)" autofocus autocomplete="off">
+                <div class="autocomplete-list" id="autocompleteList"></div>
+            </div>
+            <div class="stats">
+                <span id="resultCount">読み込み中...</span>
+                <span>⌘/Ctrl + K でフォーカス</span>
+            </div>
+            <div class="filter-tags" id="filterTags">
+                <span style="color: #666; font-size: 13px; margin-right: 8px;">タグでフィルター:</span>
+                <!-- タグはdata.jsから動的に生成されます -->
+            </div>
+            <div class="tag-description" id="tagDescription" style="display: none;"></div>
+        </div>
+        <div class="view-toggle">
+            <button class="view-btn active" id="gridViewBtn" title="ブロック表示">&#9638;</button>
+            <button class="view-btn" id="listViewBtn" title="リスト表示">&#9776;</button>
+        </div>
+        <div class="cards grid-view" id="cardsContainer"></div>
+        <div class="pagination" id="pagination"></div>
+        <div class="loading" id="loading">データを読み込んでいます...</div>
+        <div class="no-results" id="noResults" style="display: none;">
+            検索結果が見つかりませんでした
+        </div>
+        <footer class="footer">
+            <a href="https://fullswing.dena.com/pdf/AI_100tips_slide.pdf" target="_blank" rel="noopener noreferrer">AI活用100本ノック - DeNA社内のAI活用事例100選</a>
+            <p style="margin-top: 12px; font-size: 12px; opacity: 0.7;">検索アプリ © Laundlyworks | 元資料の著作権はDeNA社に帰属します</p>
+        </footer>
+    </div>
+
+    <!-- 詳細ページ -->
+    <div class="detail-page" id="detailPage">
+        <div class="detail-container">
+            <button class="detail-back" id="detailBack">← 一覧に戻る</button>
+            <div class="detail-card">
+                <span class="detail-number" id="detailNumber"></span>
+                <div class="detail-title" id="detailTitle"></div>
+                <div class="detail-image">
+                    <img id="detailImage" src="" alt="スライド画像">
+                </div>
+                <div class="detail-section">
+                    <div class="detail-label">プロセス（自動生成）</div>
+                    <div class="detail-process" id="detailProcess"></div>
+                </div>
+            </div>
+            <footer class="footer" style="margin-top: 30px;">
+                <a href="https://fullswing.dena.com/pdf/AI_100tips_slide.pdf" target="_blank" rel="noopener noreferrer">AI活用100本ノック - DeNA社内のAI活用事例100選</a>
+                <p style="margin-top: 12px; font-size: 12px; opacity: 0.7;">検索アプリ © Laundlyworks | 元資料の著作権はDeNA社に帰属します</p>
+            </footer>
+        </div>
+    </div>
+
+    <!-- 外部JSファイルからデータを読み込み（サーバー不要） -->
+    <script src="data/master.js"></script>
+    <script src="data/process.js"></script>
+    <script src="data/tags.js"></script>
+    <script>
+        let cases = [];
+        const ITEMS_PER_PAGE = 9;
+        let currentPage = 1;
+        let currentFilteredCases = [];
+        let currentQuery = '';
+        let currentView = 'grid';
+
+        // 外部JSファイル(data.js)からデータを読み込む
+        function loadData() {
+            if (typeof DATA === 'undefined') {
+                console.error('data.js が読み込まれていません');
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('noResults').textContent =
+                    'データの読み込みに失敗しました。data.js が同じフォルダに存在することを確認してください。';
+                document.getElementById('noResults').style.display = 'block';
+                return;
+            }
+
+            cases = DATA.map(item => ({
+                number: String(item.id).padStart(3, '0'),
+                title: item.title,
+                subtitle: item.subtitle,
+                challenge_primary: item.challenge_primary,
+                challenge_secondary: item.challenge_secondary,
+                solution_primary: item.solution_primary,
+                solution_secondary: item.solution_secondary,
+                outcome_primary: item.outcome_primary,
+                outcome_secondary: item.outcome_secondary,
+                voice: item.voice,
+                tags: item.tags || []
+            }));
+            document.getElementById('loading').style.display = 'none';
+            currentFilteredCases = cases;
+
+            // 全タグを抽出してカウント
+            generateFilterTags();
+
+            renderPage();
+        }
+
+        let allTags = []; // オートコンプリート用の全タグリスト
+
+        function generateFilterTags() {
+            const tagCounts = {};
+            cases.forEach(c => {
+                c.tags.forEach(tag => {
+                    tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+                });
+            });
+
+            // カウント順でソート
+            const sortedTags = Object.entries(tagCounts)
+                .sort((a, b) => b[1] - a[1])
+                .map(([tag, count]) => ({ tag, count }));
+
+            // 全タグを保存（オートコンプリート用）
+            allTags = sortedTags.map(t => t.tag);
+
+            // フィルタータグを生成（2件以上のみ）
+            const filterTagsContainer = document.getElementById('filterTags');
+            filterTagsContainer.innerHTML = '<span style="color: #666; font-size: 13px; margin-right: 8px;">タグでフィルター:</span>';
+
+            sortedTags
+                .filter(({ count }) => count >= 2)
+                .forEach(({ tag }) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'filter-tag';
+                    btn.dataset.tag = tag;
+                    btn.textContent = tag;
+                    btn.addEventListener('click', () => handleTagClick(btn, tag));
+                    filterTagsContainer.appendChild(btn);
+                });
+        }
+
+        function handleTagClick(btn, tagText) {
+            const tagDescriptionEl = document.getElementById('tagDescription');
+
+            if (activeTag === tagText) {
+                // Deselect
+                btn.classList.remove('active');
+                activeTag = null;
+                searchInput.value = '';
+                currentQuery = '';
+                currentFilteredCases = cases;
+                currentPage = 1;
+                renderPage();
+                // Hide tag description
+                tagDescriptionEl.style.display = 'none';
+            } else {
+                // Select new tag
+                document.querySelectorAll('.filter-tag').forEach(t => t.classList.remove('active'));
+                btn.classList.add('active');
+                activeTag = tagText;
+                searchInput.value = tagText;
+                handleSearch();
+                // handleSearch will call updateTagDescriptionFromSearch
+            }
+        }
+
+        function showTagDescription(tagText) {
+            const tagDescriptionEl = document.getElementById('tagDescription');
+            if (!tagText) {
+                tagDescriptionEl.style.display = 'none';
+                return;
+            }
+            // Display the tag name as shown on the page
+            const displayTagName = tagText;
+            if (typeof TAGS !== 'undefined') {
+                const tagInfo = TAGS.find(t => t.tag === tagText || t.tag === '#' + tagText);
+                if (tagInfo && tagInfo.explanation) {
+                    tagDescriptionEl.innerHTML = `<span class="tag-name">${displayTagName}</span>${tagInfo.explanation}`;
+                    tagDescriptionEl.style.display = 'block';
+                    return;
+                }
+            }
+            // Hide if not a valid tag
+            tagDescriptionEl.style.display = 'none';
+        }
+
+        function updateTagDescriptionFromSearch() {
+            const searchText = searchInput.value.trim();
+            const tagDescriptionEl = document.getElementById('tagDescription');
+
+            if (!searchText) {
+                tagDescriptionEl.style.display = 'none';
+                return;
+            }
+
+            // Check if search text matches a tag
+            if (typeof TAGS !== 'undefined') {
+                const tagInfo = TAGS.find(t => t.tag === searchText || t.tag === '#' + searchText);
+                if (tagInfo && tagInfo.explanation) {
+                    tagDescriptionEl.innerHTML = `<span class="tag-name">${searchText}</span>${tagInfo.explanation}`;
+                    tagDescriptionEl.style.display = 'block';
+                    return;
+                }
+            }
+
+            // Hide if search text doesn't match any tag
+            tagDescriptionEl.style.display = 'none';
+        }
+
+        const cardsContainer = document.getElementById('cardsContainer');
+        const paginationContainer = document.getElementById('pagination');
+        const searchInput = document.getElementById('searchInput');
+        const resultCount = document.getElementById('resultCount');
+        const noResults = document.getElementById('noResults');
+
+        let activeTag = null;
+
+        function highlightText(text, query) {
+            if (!query) return text;
+            const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            return text.replace(regex, '<span class="highlight">$1</span>');
+        }
+
+        function renderPage() {
+            const totalPages = Math.ceil(currentFilteredCases.length / ITEMS_PER_PAGE);
+            const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+            const endIndex = startIndex + ITEMS_PER_PAGE;
+            const pageItems = currentFilteredCases.slice(startIndex, endIndex);
+
+            renderCards(pageItems, currentQuery);
+            renderPagination(totalPages);
+
+            if (currentFilteredCases.length > 0) {
+                const showingStart = startIndex + 1;
+                const showingEnd = Math.min(endIndex, currentFilteredCases.length);
+                resultCount.textContent = `${currentFilteredCases.length}件中 ${showingStart}-${showingEnd}件表示`;
+            }
+        }
+
+        function renderCards(pageCases, query = '') {
+            cardsContainer.innerHTML = '';
+
+            if (currentFilteredCases.length === 0) {
+                noResults.style.display = 'block';
+                paginationContainer.innerHTML = '';
+                resultCount.textContent = '0件';
+                return;
+            }
+
+            noResults.style.display = 'none';
+
+            pageCases.forEach(c => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.dataset.number = c.number;
+
+                if (currentView === 'list') {
+                    card.innerHTML = `
+                        <span class="card-number">${c.number}</span>
+                        <div class="card-body">
+                            <div class="card-title">${highlightText(c.subtitle, query)}</div>
+                            <div class="card-solution">${highlightText(c.solution_primary, query)}</div>
+                        </div>
+                    `;
+                } else {
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <span class="card-number">${c.number}</span>
+                            <div class="card-title">${highlightText(c.subtitle, query)}</div>
+                        </div>
+                        <div class="card-solution">${highlightText(c.solution_primary, query)}</div>
+                    `;
+                }
+
+                card.addEventListener('click', () => showDetail(c));
+                cardsContainer.appendChild(card);
+            });
+        }
+
+        // 詳細ページ表示
+        const detailPage = document.getElementById('detailPage');
+        const detailBack = document.getElementById('detailBack');
+
+        function showDetail(caseData) {
+            document.getElementById('detailNumber').textContent = caseData.number;
+            document.getElementById('detailTitle').textContent = caseData.title;
+            document.getElementById('detailImage').src = `data/images/tips${caseData.number}.jpeg`;
+
+            // プロセスを表示（新しい構造に対応）
+            let processHtml = '';
+            if (typeof PROCESS !== 'undefined') {
+                const processItem = PROCESS.find(p => p[caseData.number]);
+                if (processItem && processItem[caseData.number]) {
+                    processHtml = processItem[caseData.number].map(step => {
+                        const key = Object.keys(step).find(k => k !== 'prompt');
+                        const value = step[key];
+                        const prompt = step.prompt;
+                        let stepHtml = `<div class="process-step"><strong>${key}</strong><br>${value}`;
+                        if (prompt) {
+                            stepHtml += `<div class="process-prompt"><span class="process-prompt-label">💡 プロンプト例</span>${prompt}</div>`;
+                        }
+                        stepHtml += '</div>';
+                        return stepHtml;
+                    }).join('');
+                }
+            }
+            document.getElementById('detailProcess').innerHTML = processHtml || 'プロセス情報がありません';
+
+            detailPage.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function hideDetail() {
+            detailPage.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        detailBack.addEventListener('click', hideDetail);
+
+        // Escキーで詳細を閉じる
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && detailPage.classList.contains('active')) {
+                hideDetail();
+            }
+        });
+
+        function renderPagination(totalPages) {
+            paginationContainer.innerHTML = '';
+
+            // 前へボタン
+            const prevBtn = document.createElement('button');
+            prevBtn.textContent = '← 前へ';
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.addEventListener('click', () => goToPage(currentPage - 1));
+            paginationContainer.appendChild(prevBtn);
+
+            // 表示するページ番号を決定
+            const pagesToShow = new Set();
+            pagesToShow.add(1); // 最初のページ
+            pagesToShow.add(totalPages); // 最後のページ
+            pagesToShow.add(currentPage); // 現在のページ
+            // 現在の前後2ページ
+            if (currentPage > 1) pagesToShow.add(currentPage - 1);
+            if (currentPage > 2) pagesToShow.add(currentPage - 2);
+            if (currentPage < totalPages) pagesToShow.add(currentPage + 1);
+            if (currentPage < totalPages - 1) pagesToShow.add(currentPage + 2);
+
+            const sortedPages = Array.from(pagesToShow).sort((a, b) => a - b);
+
+            let lastPage = 0;
+            sortedPages.forEach(page => {
+                // 省略記号を追加
+                if (page - lastPage > 1) {
+                    const dots = document.createElement('span');
+                    dots.textContent = '・';
+                    dots.style.color = 'white';
+                    dots.style.padding = '0 4px';
+                    paginationContainer.appendChild(dots);
+                }
+
+                const pageBtn = document.createElement('button');
+                pageBtn.textContent = page;
+                if (page === currentPage) {
+                    pageBtn.classList.add('active');
+                }
+                pageBtn.addEventListener('click', () => goToPage(page));
+                paginationContainer.appendChild(pageBtn);
+                lastPage = page;
+            });
+
+            // 次へボタン
+            const nextBtn = document.createElement('button');
+            nextBtn.textContent = '次へ →';
+            nextBtn.disabled = currentPage === totalPages;
+            nextBtn.addEventListener('click', () => goToPage(currentPage + 1));
+            paginationContainer.appendChild(nextBtn);
+        }
+
+        function goToPage(page) {
+            currentPage = page;
+            renderPage();
+        }
+
+        function filterCases(query) {
+            if (!query) return cases;
+            const lowerQuery = query.toLowerCase();
+            return cases.filter(c =>
+                c.title.toLowerCase().includes(lowerQuery) ||
+                c.subtitle.toLowerCase().includes(lowerQuery) ||
+                c.challenge_primary.toLowerCase().includes(lowerQuery) ||
+                c.challenge_secondary.toLowerCase().includes(lowerQuery) ||
+                c.solution_primary.toLowerCase().includes(lowerQuery) ||
+                c.solution_secondary.toLowerCase().includes(lowerQuery) ||
+                c.outcome_primary.toLowerCase().includes(lowerQuery) ||
+                c.outcome_secondary.toLowerCase().includes(lowerQuery) ||
+                c.voice.toLowerCase().includes(lowerQuery) ||
+                c.tags.some(tag => tag.toLowerCase().includes(lowerQuery))
+            );
+        }
+
+        function handleSearch() {
+            currentQuery = searchInput.value.trim();
+            currentFilteredCases = filterCases(currentQuery);
+            currentPage = 1;
+            renderPage();
+
+            // Reset active tag if user types manually
+            if (currentQuery && activeTag && currentQuery !== activeTag) {
+                document.querySelectorAll('.filter-tag').forEach(tag => tag.classList.remove('active'));
+                activeTag = null;
+            }
+
+            // Update tag description based on current search text
+            updateTagDescriptionFromSearch();
+        }
+
+        searchInput.addEventListener('input', handleSearch);
+
+        // オートコンプリート機能
+        const autocompleteList = document.getElementById('autocompleteList');
+        let selectedAutocompleteIndex = -1;
+
+        searchInput.addEventListener('input', () => {
+            showAutocomplete(searchInput.value);
+        });
+
+        searchInput.addEventListener('focus', () => {
+            if (searchInput.value) {
+                showAutocomplete(searchInput.value);
+            }
+        });
+
+        searchInput.addEventListener('blur', () => {
+            // 少し遅延を入れてクリックイベントを処理できるようにする
+            setTimeout(() => {
+                autocompleteList.classList.remove('active');
+            }, 200);
+        });
+
+        searchInput.addEventListener('keydown', (e) => {
+            const items = autocompleteList.querySelectorAll('.autocomplete-item');
+            if (!autocompleteList.classList.contains('active') || items.length === 0) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectedAutocompleteIndex = Math.min(selectedAutocompleteIndex + 1, items.length - 1);
+                updateAutocompleteSelection(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectedAutocompleteIndex = Math.max(selectedAutocompleteIndex - 1, 0);
+                updateAutocompleteSelection(items);
+            } else if (e.key === 'Enter' && selectedAutocompleteIndex >= 0) {
+                e.preventDefault();
+                const selected = items[selectedAutocompleteIndex];
+                if (selected) {
+                    searchInput.value = selected.dataset.value;
+                    autocompleteList.classList.remove('active');
+                    handleSearch();
+                }
+            }
+        });
+
+        function updateAutocompleteSelection(items) {
+            items.forEach((item, index) => {
+                item.classList.toggle('selected', index === selectedAutocompleteIndex);
+            });
+        }
+
+        function showAutocomplete(query) {
+            if (!query || query.length < 1) {
+                autocompleteList.classList.remove('active');
+                return;
+            }
+
+            const lowerQuery = query.toLowerCase();
+
+            // タグとタイトルから候補を検索
+            const tagMatches = allTags
+                .filter(tag => tag.toLowerCase().includes(lowerQuery))
+                .slice(0, 5)
+                .map(tag => ({ type: 'tag', value: tag, display: tag }));
+
+            const titleMatches = cases
+                .filter(c => c.subtitle.toLowerCase().includes(lowerQuery))
+                .slice(0, 5)
+                .map(c => ({ type: 'title', value: c.subtitle, display: c.subtitle, number: c.number }));
+
+            const matches = [...tagMatches, ...titleMatches];
+
+            if (matches.length === 0) {
+                autocompleteList.classList.remove('active');
+                return;
+            }
+
+            autocompleteList.innerHTML = matches.map((m, i) => {
+                if (m.type === 'tag') {
+                    return `<div class="autocomplete-item" data-value="${m.value}" data-index="${i}"><span class="tag">${m.display}</span></div>`;
+                } else {
+                    return `<div class="autocomplete-item" data-value="${m.value}" data-index="${i}">${m.number}: ${m.display}</div>`;
+                }
+            }).join('');
+
+            autocompleteList.querySelectorAll('.autocomplete-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    searchInput.value = item.dataset.value;
+                    autocompleteList.classList.remove('active');
+                    handleSearch();
+                });
+            });
+
+            selectedAutocompleteIndex = -1;
+            autocompleteList.classList.add('active');
+        }
+
+        // Keyboard shortcut
+        document.addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                searchInput.focus();
+                searchInput.select();
+            }
+        });
+
+        // View toggle
+        const gridViewBtn = document.getElementById('gridViewBtn');
+        const listViewBtn = document.getElementById('listViewBtn');
+
+        gridViewBtn.addEventListener('click', () => {
+            currentView = 'grid';
+            cardsContainer.classList.remove('list-view');
+            cardsContainer.classList.add('grid-view');
+            gridViewBtn.classList.add('active');
+            listViewBtn.classList.remove('active');
+            renderPage();
+        });
+
+        listViewBtn.addEventListener('click', () => {
+            currentView = 'list';
+            cardsContainer.classList.remove('grid-view');
+            cardsContainer.classList.add('list-view');
+            listViewBtn.classList.add('active');
+            gridViewBtn.classList.remove('active');
+            renderPage();
+        });
+
+        // ダークモード切り替え
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const darkModeIcon = document.getElementById('darkModeIcon');
+
+        function setDarkMode(isDark) {
+            if (isDark) {
+                document.body.classList.add('dark-mode');
+                darkModeIcon.textContent = '☀️';
+                localStorage.setItem('darkMode', 'true');
+            } else {
+                document.body.classList.remove('dark-mode');
+                darkModeIcon.textContent = '🌙';
+                localStorage.setItem('darkMode', 'false');
+            }
+        }
+
+        // 初期状態をlocalStorageから復元
+        if (localStorage.getItem('darkMode') === 'true') {
+            setDarkMode(true);
+        }
+
+        darkModeToggle.addEventListener('click', () => {
+            setDarkMode(!document.body.classList.contains('dark-mode'));
+        });
+
+        // 初期化: JSONからデータを読み込む
+        loadData();
+    </script>
+</body>
+</html>
